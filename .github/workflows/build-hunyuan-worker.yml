@@ -6,7 +6,9 @@ on:
     branches:
       - main
     paths:
-      - "runpod-worker/**"
+      - "runpod-worker/Dockerfile"
+      - "runpod-worker/handler.py"
+      - "runpod-worker/requirements.txt"
       - ".github/workflows/build-hunyuan-worker.yml"
 
 permissions:
