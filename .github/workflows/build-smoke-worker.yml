@@ -1,0 +1,43 @@
+name: Build Smoke Worker
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - "runpod-worker/Dockerfile.smoke"
+      - "runpod-worker/handler.py"
+      - "runpod-worker/requirements.txt"
+      - ".github/workflows/build-smoke-worker.yml"
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push smoke worker image
+        uses: docker/build-push-action@v6
+        with:
+          context: runpod-worker
+          file: runpod-worker/Dockerfile.smoke
+          platforms: linux/amd64
+          push: true
+          tags: ghcr.io/${{ github.repository_owner }}/space-tycoon-hunyuan-worker:smoke

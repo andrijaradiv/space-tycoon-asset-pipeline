@@ -1,0 +1,12 @@
+FROM python:3.12-slim
+
+ENV PYTHONUNBUFFERED=1
+ENV HUNYUAN_STUB_MODE=1
+WORKDIR /workspace/worker
+
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY handler.py .
+
+CMD ["python", "-u", "handler.py"]

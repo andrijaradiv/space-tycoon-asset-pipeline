@@ -81,4 +81,10 @@ The GitHub Actions workflow builds this image for RunPod:
 ghcr.io/andrijaradiv/space-tycoon-hunyuan-worker:latest
 ```
 
+There is also a tiny smoke-test image for validating RunPod endpoint + MCP wiring before the full CUDA/Hunyuan image finishes:
+
+```text
+ghcr.io/andrijaradiv/space-tycoon-hunyuan-worker:smoke
+```
+
 The worker intentionally lives under `runpod-worker/` so the container context does not include local secrets or generated assets.
