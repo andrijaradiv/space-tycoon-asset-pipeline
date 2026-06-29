@@ -40,14 +40,15 @@ def find_hunyuan_root() -> Path:
     ]
 
     for candidate in [path for path in candidates if path]:
-        if (candidate / "hy3dshape").exists():
+        if (candidate / "hy3dshape").exists() or (candidate / "hy3dgen").exists():
             return candidate
 
     for base in (Path("/workspace"), Path("/app"), Path("/opt"), Path("/root")):
         if not base.exists():
             continue
-        for shape_dir in base.rglob("hy3dshape"):
-            return shape_dir.parent
+        for package_name in ("hy3dshape", "hy3dgen"):
+            for package_dir in base.rglob(package_name):
+                return package_dir.parent
 
     root_summaries = []
     for base in (Path("/workspace"), Path("/app"), Path("/opt"), Path("/root")):
@@ -90,31 +91,55 @@ def generate_with_hunyuan(input_image: Path, output_path: Path, job_input: dict)
     # image after the Hunyuan repo and compiled rasterizer are installed.
     import sys
 
+    hunyuan_api = "2.1"
     try:
         from hy3dshape.pipelines import Hunyuan3DDiTFlowMatchingPipeline
         from textureGenPipeline import Hunyuan3DPaintConfig, Hunyuan3DPaintPipeline
     except ModuleNotFoundError:
         hunyuan_root = find_hunyuan_root()
-        for import_path in (hunyuan_root, hunyuan_root / "hy3dshape", hunyuan_root / "hy3dpaint"):
+        for import_path in (
+            hunyuan_root,
+            hunyuan_root / "hy3dshape",
+            hunyuan_root / "hy3dpaint",
+            hunyuan_root / "hy3dgen",
+        ):
             sys.path.insert(0, str(import_path))
 
-        from hy3dshape.pipelines import Hunyuan3DDiTFlowMatchingPipeline
-        from textureGenPipeline import Hunyuan3DPaintConfig, Hunyuan3DPaintPipeline
+        if (hunyuan_root / "hy3dgen").exists():
+            from hy3dgen.shapegen import Hunyuan3DDiTFlowMatchingPipeline
+            from hy3dgen.texgen import Hunyuan3DPaintPipeline
 
-    model_id = job_input.get("model_id", os.getenv("HUNYUAN_MODEL_ID", "tencent/Hunyuan3D-2.1"))
+            hunyuan_api = "2.0"
+        else:
+            from hy3dshape.pipelines import Hunyuan3DDiTFlowMatchingPipeline
+            from textureGenPipeline import Hunyuan3DPaintConfig, Hunyuan3DPaintPipeline
+
+    default_model_id = "tencent/Hunyuan3D-2" if hunyuan_api == "2.0" else "tencent/Hunyuan3D-2.1"
+    model_id = job_input.get("model_id", os.getenv("HUNYUAN_MODEL_ID", default_model_id))
     shape_subfolder = job_input.get(
         "shape_subfolder",
         os.getenv("HUNYUAN_SHAPE_SUBFOLDER", "hunyuan3d-dit-v2-1"),
     )
-    shape_pipeline = Hunyuan3DDiTFlowMatchingPipeline.from_pretrained(
-        model_id,
-        subfolder=shape_subfolder,
-    )
+
+    if hunyuan_api == "2.0":
+        shape_pipeline = Hunyuan3DDiTFlowMatchingPipeline.from_pretrained(model_id)
+    else:
+        shape_pipeline = Hunyuan3DDiTFlowMatchingPipeline.from_pretrained(
+            model_id,
+            subfolder=shape_subfolder,
+        )
+
     mesh = shape_pipeline(image=str(input_image))[0]
+
+    if hunyuan_api == "2.0":
+        if job_input.get("textured", True):
+            paint_pipeline = Hunyuan3DPaintPipeline.from_pretrained(model_id)
+            mesh = paint_pipeline(mesh, image=str(input_image))
+        mesh.export(str(output_path))
+        return output_path
 
     untextured_path = output_path.with_suffix(".obj")
     mesh.export(str(untextured_path))
-
     if job_input.get("textured", True):
         paint_pipeline = Hunyuan3DPaintPipeline(
             Hunyuan3DPaintConfig(max_num_view=6, resolution=512)
