@@ -81,6 +81,8 @@ The GitHub Actions workflow builds this image for RunPod:
 ghcr.io/andrijaradiv/space-tycoon-hunyuan-worker:latest
 ```
 
+The real worker image wraps RunPod's `alexkozinov/hunyan3d-2-cuda12.4:latest` pod-template image with our serverless handler. That avoids rebuilding the whole CUDA/Hunyuan stack from scratch and keeps the endpoint callable through RunPod's queue API.
+
 There is also a tiny smoke-test image for validating RunPod endpoint + MCP wiring before the full CUDA/Hunyuan image finishes:
 
 ```text

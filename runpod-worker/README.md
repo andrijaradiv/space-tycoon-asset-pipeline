@@ -32,7 +32,9 @@ Target output:
 
 Use a GPU with at least 24GB VRAM for textured output. Hunyuan3D 2.1 documents roughly 10GB for shape generation, 21GB for texture generation, and 29GB total if running shape + texture together. A 4090 can be a cheap starting point; A100/L40S class GPUs are smoother.
 
-The Dockerfile intentionally has a separate model-cache step. For low cold starts, build an image that already has the repo, compiled paint dependencies, and model weights cached.
+The Dockerfile wraps RunPod's `alexkozinov/hunyan3d-2-cuda12.4:latest` pod-template image with this serverless handler. That template appears in RunPod search under Pod templates, but using it as a base image lets us keep the pay-per-job serverless endpoint instead of running an always-on pod UI.
+
+The handler searches common locations for a Hunyuan checkout. If the base image changes, set `HUNYUAN3D_ROOT` to the directory containing `hy3dshape`.
 
 ## Local Test
 
