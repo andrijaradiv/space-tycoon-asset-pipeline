@@ -121,6 +121,7 @@ def generate_with_hunyuan(input_image: Path, output_path: Path, job_input: dict)
         os.getenv("HUNYUAN_SHAPE_SUBFOLDER", "hunyuan3d-dit-v2-1"),
     )
 
+    print(f"space3d: loading shape pipeline api={hunyuan_api} model={model_id}", flush=True)
     if hunyuan_api == "2.0":
         shape_pipeline = Hunyuan3DDiTFlowMatchingPipeline.from_pretrained(model_id)
     else:
@@ -129,24 +130,34 @@ def generate_with_hunyuan(input_image: Path, output_path: Path, job_input: dict)
             subfolder=shape_subfolder,
         )
 
+    print("space3d: running shape generation", flush=True)
     mesh = shape_pipeline(image=str(input_image))[0]
+    print("space3d: shape generation complete", flush=True)
 
     if hunyuan_api == "2.0":
         if job_input.get("textured", True):
+            print("space3d: loading texture pipeline", flush=True)
             paint_pipeline = Hunyuan3DPaintPipeline.from_pretrained(model_id)
+            print("space3d: running texture generation", flush=True)
             mesh = paint_pipeline(mesh, image=str(input_image))
+            print("space3d: texture generation complete", flush=True)
+        print(f"space3d: exporting {output_path}", flush=True)
         mesh.export(str(output_path))
         return output_path
 
     untextured_path = output_path.with_suffix(".obj")
     mesh.export(str(untextured_path))
     if job_input.get("textured", True):
+        print("space3d: loading texture pipeline", flush=True)
         paint_pipeline = Hunyuan3DPaintPipeline(
             Hunyuan3DPaintConfig(max_num_view=6, resolution=512)
         )
+        print("space3d: running texture generation", flush=True)
         textured_mesh = paint_pipeline(str(untextured_path), image_path=str(input_image))
+        print("space3d: texture generation complete", flush=True)
         textured_mesh.export(str(output_path))
     else:
+        print(f"space3d: exporting {output_path}", flush=True)
         mesh.export(str(output_path))
 
     return output_path
