@@ -20,28 +20,44 @@ def find_hunyuan_root() -> Path:
     configured = os.getenv("HUNYUAN3D_ROOT")
     candidates = [
         Path(configured) if configured else None,
+        Path("/Hunyuan3D-2.1"),
+        Path("/Hunyuan3D-2"),
+        Path("/Hunyuan3D"),
         Path("/workspace/Hunyuan3D-2.1"),
         Path("/workspace/Hunyuan3D-2"),
         Path("/workspace/Hunyuan3D"),
+        Path("/workspace/hunyan3d-2"),
         Path("/workspace/hunyuan3d-2.1"),
         Path("/workspace/hunyuan3d-2"),
         Path("/app/Hunyuan3D-2.1"),
         Path("/app/Hunyuan3D-2"),
         Path("/app/Hunyuan3D"),
+        Path("/root/Hunyuan3D-2.1"),
+        Path("/root/Hunyuan3D-2"),
+        Path("/root/Hunyuan3D"),
+        Path("/root/hunyan3d-2"),
+        Path("/root/hunyuan3d-2"),
     ]
 
     for candidate in [path for path in candidates if path]:
         if (candidate / "hy3dshape").exists():
             return candidate
 
-    for base in (Path("/workspace"), Path("/app"), Path("/opt")):
+    for base in (Path("/workspace"), Path("/app"), Path("/opt"), Path("/root")):
         if not base.exists():
             continue
         for shape_dir in base.rglob("hy3dshape"):
             return shape_dir.parent
 
+    root_summaries = []
+    for base in (Path("/workspace"), Path("/app"), Path("/opt"), Path("/root")):
+        if base.exists():
+            names = ", ".join(sorted(path.name for path in base.iterdir())[:30])
+            root_summaries.append(f"{base}: {names}")
+
     raise FileNotFoundError(
-        "Could not find a Hunyuan3D checkout. Set HUNYUAN3D_ROOT or use a base image that includes hy3dshape."
+        "Could not find a Hunyuan3D checkout. Set HUNYUAN3D_ROOT or use a base image that includes hy3dshape. "
+        + " | ".join(root_summaries)
     )
 
 
@@ -74,12 +90,16 @@ def generate_with_hunyuan(input_image: Path, output_path: Path, job_input: dict)
     # image after the Hunyuan repo and compiled rasterizer are installed.
     import sys
 
-    hunyuan_root = find_hunyuan_root()
-    for import_path in (hunyuan_root, hunyuan_root / "hy3dshape", hunyuan_root / "hy3dpaint"):
-        sys.path.insert(0, str(import_path))
+    try:
+        from hy3dshape.pipelines import Hunyuan3DDiTFlowMatchingPipeline
+        from textureGenPipeline import Hunyuan3DPaintConfig, Hunyuan3DPaintPipeline
+    except ModuleNotFoundError:
+        hunyuan_root = find_hunyuan_root()
+        for import_path in (hunyuan_root, hunyuan_root / "hy3dshape", hunyuan_root / "hy3dpaint"):
+            sys.path.insert(0, str(import_path))
 
-    from hy3dshape.pipelines import Hunyuan3DDiTFlowMatchingPipeline
-    from textureGenPipeline import Hunyuan3DPaintConfig, Hunyuan3DPaintPipeline
+        from hy3dshape.pipelines import Hunyuan3DDiTFlowMatchingPipeline
+        from textureGenPipeline import Hunyuan3DPaintConfig, Hunyuan3DPaintPipeline
 
     model_id = job_input.get("model_id", os.getenv("HUNYUAN_MODEL_ID", "tencent/Hunyuan3D-2.1"))
     shape_subfolder = job_input.get(
