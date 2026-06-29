@@ -62,6 +62,37 @@ def find_hunyuan_root() -> Path:
     )
 
 
+def simplify_mesh(mesh, target_polycount):
+    try:
+        target_faces = int(target_polycount or 0)
+    except (TypeError, ValueError):
+        target_faces = 0
+
+    faces = getattr(mesh, "faces", None)
+    current_faces = len(faces) if faces is not None else 0
+    if target_faces <= 0 or current_faces <= target_faces:
+        if current_faces:
+            print(f"space3d: mesh faces={current_faces}; no simplification needed", flush=True)
+        return mesh
+
+    print(f"space3d: simplifying mesh faces {current_faces} -> {target_faces}", flush=True)
+    for method_name in ("simplify_quadric_decimation", "simplify_quadratic_decimation"):
+        simplify = getattr(mesh, method_name, None)
+        if not simplify:
+            continue
+        try:
+            simplified = simplify(face_count=target_faces)
+        except TypeError:
+            simplified = simplify(target_faces)
+        simplified_faces = getattr(simplified, "faces", None)
+        if simplified_faces is not None:
+            print(f"space3d: simplified mesh faces={len(simplified_faces)}", flush=True)
+        return simplified
+
+    print("space3d: mesh simplification unavailable; exporting raw mesh", flush=True)
+    return mesh
+
+
 def generate_with_hunyuan(input_image: Path, output_path: Path, job_input: dict) -> Path:
     """Generate a GLB with Hunyuan3D.
 
@@ -133,6 +164,7 @@ def generate_with_hunyuan(input_image: Path, output_path: Path, job_input: dict)
     print("space3d: running shape generation", flush=True)
     mesh = shape_pipeline(image=str(input_image))[0]
     print("space3d: shape generation complete", flush=True)
+    mesh = simplify_mesh(mesh, job_input.get("target_polycount"))
 
     if hunyuan_api == "2.0":
         if job_input.get("textured", True):
