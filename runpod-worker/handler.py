@@ -3,9 +3,11 @@ import argparse
 import json
 import os
 import tempfile
+import time
 from pathlib import Path
 
 import runpod
+from PIL import Image
 
 
 def write_input_image(image_base64: str, image_filename: str | None) -> Path:
@@ -93,6 +95,52 @@ def simplify_mesh(mesh, target_polycount):
     return mesh
 
 
+def load_rgba_image(image_path: Path):
+    image = Image.open(image_path).convert("RGBA")
+    print(f"space3d: loaded input image size={image.size} mode={image.mode}", flush=True)
+    return image
+
+
+def configure_legacy_paint_pipeline(paint_pipeline, job_input: dict):
+    """Tune Hunyuan3D 2.0 texture generation for small game assets."""
+    config = getattr(paint_pipeline, "config", None)
+    render = getattr(paint_pipeline, "render", None)
+    if not config or not render:
+        return paint_pipeline
+
+    resolution = int(job_input.get("texture_resolution") or os.getenv("HUNYUAN_TEXTURE_RESOLUTION", "512"))
+    num_views = int(job_input.get("texture_num_views") or os.getenv("HUNYUAN_TEXTURE_NUM_VIEWS", "6"))
+
+    if resolution > 0:
+        config.render_size = resolution
+        config.texture_size = resolution
+        try:
+            paint_pipeline.render = render.__class__(
+                default_resolution=config.render_size,
+                texture_size=config.texture_size,
+            )
+            print(f"space3d: configured texture resolution={resolution}", flush=True)
+        except Exception as exc:
+            print(f"space3d: could not resize texture renderer: {exc}", flush=True)
+
+    if 0 < num_views < len(config.candidate_camera_azims):
+        config.candidate_camera_azims = config.candidate_camera_azims[:num_views]
+        config.candidate_camera_elevs = config.candidate_camera_elevs[:num_views]
+        config.candidate_view_weights = config.candidate_view_weights[:num_views]
+        print(f"space3d: configured texture views={num_views}", flush=True)
+
+    return paint_pipeline
+
+
+def timed(label: str, fn):
+    started = time.monotonic()
+    try:
+        return fn()
+    finally:
+        elapsed = time.monotonic() - started
+        print(f"space3d: {label} seconds={elapsed:.1f}", flush=True)
+
+
 def generate_with_hunyuan(input_image: Path, output_path: Path, job_input: dict) -> Path:
     """Generate a GLB with Hunyuan3D.
 
@@ -152,26 +200,39 @@ def generate_with_hunyuan(input_image: Path, output_path: Path, job_input: dict)
         os.getenv("HUNYUAN_SHAPE_SUBFOLDER", "hunyuan3d-dit-v2-1"),
     )
 
+    source_image = load_rgba_image(input_image)
+
     print(f"space3d: loading shape pipeline api={hunyuan_api} model={model_id}", flush=True)
     if hunyuan_api == "2.0":
-        shape_pipeline = Hunyuan3DDiTFlowMatchingPipeline.from_pretrained(model_id)
+        shape_pipeline = timed(
+            "shape pipeline load",
+            lambda: Hunyuan3DDiTFlowMatchingPipeline.from_pretrained(model_id),
+        )
     else:
-        shape_pipeline = Hunyuan3DDiTFlowMatchingPipeline.from_pretrained(
-            model_id,
-            subfolder=shape_subfolder,
+        shape_pipeline = timed(
+            "shape pipeline load",
+            lambda: Hunyuan3DDiTFlowMatchingPipeline.from_pretrained(
+                model_id,
+                subfolder=shape_subfolder,
+            ),
         )
 
     print("space3d: running shape generation", flush=True)
-    mesh = shape_pipeline(image=str(input_image))[0]
+    shape_image = source_image if hunyuan_api == "2.0" else str(input_image)
+    mesh = timed("shape generation", lambda: shape_pipeline(image=shape_image)[0])
     print("space3d: shape generation complete", flush=True)
     mesh = simplify_mesh(mesh, job_input.get("target_polycount"))
 
     if hunyuan_api == "2.0":
         if job_input.get("textured", True):
             print("space3d: loading texture pipeline", flush=True)
-            paint_pipeline = Hunyuan3DPaintPipeline.from_pretrained(model_id)
+            paint_pipeline = timed(
+                "texture pipeline load",
+                lambda: Hunyuan3DPaintPipeline.from_pretrained(model_id),
+            )
+            paint_pipeline = configure_legacy_paint_pipeline(paint_pipeline, job_input)
             print("space3d: running texture generation", flush=True)
-            mesh = paint_pipeline(mesh, image=str(input_image))
+            mesh = timed("texture generation", lambda: paint_pipeline(mesh, image=source_image))
             print("space3d: texture generation complete", flush=True)
         print(f"space3d: exporting {output_path}", flush=True)
         mesh.export(str(output_path))
