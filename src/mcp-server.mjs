@@ -1,17 +1,19 @@
 import fs from "node:fs";
 import path from "node:path";
 import readline from "node:readline";
+import { fileURLToPath } from "node:url";
 
 const SERVER_INFO = {
   name: "space-tycoon-asset-pipeline",
   version: "0.1.0",
 };
 
-const DEFAULT_OUTPUT_DIR = path.resolve(process.cwd(), "assets/models");
+const PROJECT_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+const DEFAULT_OUTPUT_DIR = path.join(PROJECT_ROOT, "assets/models");
 const RUNPOD_API_BASE = "https://api.runpod.ai/v2";
 
 function loadDotEnv() {
-  const envPath = path.resolve(process.cwd(), ".env");
+  const envPath = path.join(PROJECT_ROOT, ".env");
   if (!fs.existsSync(envPath)) return;
   const lines = fs.readFileSync(envPath, "utf8").split(/\r?\n/);
   for (const line of lines) {
@@ -234,7 +236,7 @@ async function handleToolCall(name, args = {}) {
     } else if (glbUrl) {
       savedPath = await downloadToFile(glbUrl, outputPath);
     } else {
-      const jobPath = path.join(process.cwd(), "assets/jobs", `${assetName}.json`);
+      const jobPath = path.join(PROJECT_ROOT, "assets/jobs", `${assetName}.json`);
       fs.mkdirSync(path.dirname(jobPath), { recursive: true });
       fs.writeFileSync(jobPath, JSON.stringify(payload, null, 2));
       return textContent(JSON.stringify({
