@@ -172,6 +172,8 @@ const tools = [
         output_dir: { type: "string", description: "Directory for generated GLB files." },
         textured: { type: "boolean", default: true },
         target_polycount: { type: "number", default: 8000 },
+        texture_resolution: { type: "number", default: 512 },
+        texture_num_views: { type: "number", default: 6 },
         output_format: { type: "string", enum: ["glb", "obj", "zip"], default: "glb" },
         poll_seconds: { type: "number", default: 900 },
         roblox_optimized: { type: "boolean", default: true },
@@ -222,6 +224,8 @@ async function handleToolCall(name, args = {}) {
       asset_name: assetName,
       textured: args.textured !== false,
       target_polycount: Number(args.target_polycount || 8000),
+      texture_resolution: Number(args.texture_resolution || 512),
+      texture_num_views: Number(args.texture_num_views || 6),
       output_format: outputFormat,
       roblox_optimized: args.roblox_optimized !== false,
     }, Number(args.poll_seconds || 900));
