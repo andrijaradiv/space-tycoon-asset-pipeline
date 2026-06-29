@@ -1,0 +1,9 @@
+.git
+.env
+assets/
+node_modules/
+runpod-worker/.venv/
+runpod-worker/__pycache__/
+runpod-worker/Hunyuan3D-2.1/
+runpod-worker/outputs/
+*.log

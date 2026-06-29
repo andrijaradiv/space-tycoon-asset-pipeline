@@ -1,0 +1,14 @@
+{
+  "name": "space-tycoon-asset-pipeline",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "mcp": "node src/mcp-server.mjs",
+    "mcp:test": "node scripts/test-mcp.mjs",
+    "mcp:install": "bash scripts/install-mcp.sh"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

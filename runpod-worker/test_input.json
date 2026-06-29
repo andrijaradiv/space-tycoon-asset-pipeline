@@ -1,0 +1,10 @@
+{
+  "input": {
+    "asset_name": "smoke_test_asset",
+    "image_base64": "dGVzdA==",
+    "textured": true,
+    "target_polycount": 8000,
+    "output_format": "glb",
+    "roblox_optimized": true
+  }
+}

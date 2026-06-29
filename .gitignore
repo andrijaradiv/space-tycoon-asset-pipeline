@@ -1,0 +1,8 @@
+.env
+node_modules/
+assets/models/
+assets/jobs/
+runpod-worker/.venv/
+runpod-worker/Hunyuan3D-2.1/
+runpod-worker/outputs/
+*.log
