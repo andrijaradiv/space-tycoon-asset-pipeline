@@ -392,6 +392,18 @@ def generate_with_hunyuan(input_image: Path, output_path: Path, job_input: dict,
 def handler(job):
     job_input = job.get("input") or {}
     asset_name = job_input.get("asset_name", "generated_asset")
+
+    if job_input.get("probe_only"):
+        return {
+            "ok": True,
+            "asset_name": asset_name,
+            "worker": "space-tycoon-hunyuan-worker",
+            "supports_multiview": True,
+            "view_images": sorted((job_input.get("view_images_base64") or {}).keys()),
+            "model_id": job_input.get("model_id"),
+            "texture_model_id": job_input.get("texture_model_id"),
+        }
+
     image_base64 = job_input.get("image_base64")
 
     if not image_base64:
