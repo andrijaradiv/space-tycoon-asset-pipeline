@@ -314,6 +314,11 @@ def generate_with_hunyuan(input_image: Path, output_path: Path, job_input: dict,
     view_images = view_images or {}
     default_model_id = "tencent/Hunyuan3D-2" if hunyuan_api == "2.0" else "tencent/Hunyuan3D-2.1"
     model_id = job_input.get("model_id", os.getenv("HUNYUAN_MODEL_ID", default_model_id))
+    default_texture_model_id = "tencent/Hunyuan3D-2" if hunyuan_api == "2.0" else model_id
+    texture_model_id = job_input.get(
+        "texture_model_id",
+        os.getenv("HUNYUAN_TEXTURE_MODEL_ID", default_texture_model_id),
+    )
     default_shape_subfolder = "hunyuan3d-dit-v2-1" if hunyuan_api == "2.1" else None
     if is_multiview_model(model_id):
         default_shape_subfolder = "hunyuan3d-dit-v2-mv"
@@ -350,10 +355,10 @@ def generate_with_hunyuan(input_image: Path, output_path: Path, job_input: dict,
 
     if hunyuan_api == "2.0":
         if job_input.get("textured", True):
-            print("space3d: loading texture pipeline", flush=True)
+            print(f"space3d: loading texture pipeline model={texture_model_id}", flush=True)
             paint_pipeline = timed(
                 "texture pipeline load",
-                lambda: Hunyuan3DPaintPipeline.from_pretrained(model_id),
+                lambda: Hunyuan3DPaintPipeline.from_pretrained(texture_model_id),
             )
             paint_pipeline = configure_legacy_paint_pipeline(paint_pipeline, job_input)
             print("space3d: running texture generation", flush=True)
@@ -406,6 +411,7 @@ def handler(job):
         "textured": bool(job_input.get("textured", True)),
         "target_polycount": job_input.get("target_polycount"),
         "model_id": job_input.get("model_id"),
+        "texture_model_id": job_input.get("texture_model_id"),
         "shape_subfolder": job_input.get("shape_subfolder"),
         "shape_num_inference_steps": job_input.get("shape_num_inference_steps", job_input.get("num_inference_steps")),
         "shape_guidance_scale": job_input.get("shape_guidance_scale", job_input.get("guidance_scale")),

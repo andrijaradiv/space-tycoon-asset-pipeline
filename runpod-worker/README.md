@@ -59,6 +59,7 @@ For hard-surface assets that melt from one image, use the Hunyuan3D-2mv shape mo
       "back": "back.png"
     },
     "model_id": "tencent/Hunyuan3D-2mv",
+    "texture_model_id": "tencent/Hunyuan3D-2",
     "shape_subfolder": "hunyuan3d-dit-v2-mv",
     "shape_num_inference_steps": 40,
     "shape_guidance_scale": 5,
@@ -72,6 +73,8 @@ For hard-surface assets that melt from one image, use the Hunyuan3D-2mv shape mo
 ```
 
 The worker prefers the `hy3dgen` API when a multiview model id is selected. This matters because Hunyuan3D-2mv is part of the Hunyuan3D-2 family, while Hunyuan3D-2.1 uses a different single-view shape package.
+
+Keep `model_id` and `texture_model_id` separate. Hunyuan3D-2mv is a shape model; texture generation should use a texture-capable model such as `tencent/Hunyuan3D-2`.
 
 ## Local Test
 
