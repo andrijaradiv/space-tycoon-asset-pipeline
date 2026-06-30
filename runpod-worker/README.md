@@ -12,6 +12,8 @@ RunPod Serverless job input:
     "asset_name": "floating_moon_base_plate",
     "textured": true,
     "target_polycount": 8000,
+    "texture_resolution": 1024,
+    "texture_num_views": 8,
     "output_format": "glb",
     "roblox_optimized": true
   }
@@ -35,6 +37,41 @@ Use a GPU with at least 24GB VRAM for textured output. Hunyuan3D 2.1 documents r
 The Dockerfile wraps RunPod's `alexkozinov/hunyan3d-2-cuda12.4:latest` pod-template image with this serverless handler. That template appears in RunPod search under Pod templates, but using it as a base image lets us keep the pay-per-job serverless endpoint instead of running an always-on pod UI.
 
 The handler searches common locations for a Hunyuan checkout. If the base image changes, set `HUNYUAN3D_ROOT` to the directory containing `hy3dshape`.
+
+## Multiview Shape Tests
+
+For hard-surface assets that melt from one image, use the Hunyuan3D-2mv shape model with cropped views from one shared turntable sheet:
+
+```json
+{
+  "input": {
+    "asset_name": "space_tycoon_item_pedestal_mv",
+    "image_base64": "...front view...",
+    "image_filename": "front.png",
+    "view_images_base64": {
+      "front": "...",
+      "left": "...",
+      "back": "..."
+    },
+    "view_image_filenames": {
+      "front": "front.png",
+      "left": "left.png",
+      "back": "back.png"
+    },
+    "model_id": "tencent/Hunyuan3D-2mv",
+    "shape_subfolder": "hunyuan3d-dit-v2-mv",
+    "shape_num_inference_steps": 40,
+    "shape_guidance_scale": 5,
+    "octree_resolution": 380,
+    "num_chunks": 20000,
+    "target_polycount": 15000,
+    "texture_resolution": 1024,
+    "texture_num_views": 8
+  }
+}
+```
+
+The worker prefers the `hy3dgen` API when a multiview model id is selected. This matters because Hunyuan3D-2mv is part of the Hunyuan3D-2 family, while Hunyuan3D-2.1 uses a different single-view shape package.
 
 ## Local Test
 
